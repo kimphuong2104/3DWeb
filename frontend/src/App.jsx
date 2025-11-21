@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useLoader } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
 import * as THREE from 'three';
 import axios from 'axios';
@@ -52,6 +52,26 @@ const styles = `
   .control-item { display: flex; align-items: center; gap: 10px; font-size: 0.875rem; color: #475569; font-weight: 500; }
   .control-icon { font-size: 1.1rem; }
   
+  /* Texture Selector */
+  .texture-panel {
+    position: absolute; top: 90px; right: 24px; z-index: 10;
+    background: rgba(255, 255, 255, 0.95); padding: 20px; border-radius: 12px;
+    backdrop-filter: blur(4px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.5); min-width: 250px;
+  }
+  .texture-panel h3 { color: #1e293b; font-size: 1rem; margin-bottom: 16px; font-weight: 600; }
+  .texture-group { margin-bottom: 20px; }
+  .texture-group:last-child { margin-bottom: 0; }
+  .texture-group label { display: block; color: #64748b; font-size: 0.875rem; font-weight: 500; margin-bottom: 8px; }
+  .texture-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .texture-option {
+    padding: 8px; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer;
+    transition: all 0.2s ease; text-align: center; font-size: 0.75rem; color: #475569;
+    background: white;
+  }
+  .texture-option:hover { border-color: #cbd5e1; transform: translateY(-1px); }
+  .texture-option.active { border-color: #2563eb; background: #eff6ff; color: #2563eb; font-weight: 600; }
+
   /* Loading */
   .loading-overlay {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -66,10 +86,10 @@ const styles = `
   .canvas { width: 100% !important; height: 100% !important; outline: none; }
 `;
 
-// --- PHẦN 2: LOGIC 3D (Trước đây là Walls.jsx) ---
+// --- PHẦN 2: LOGIC 3D ---
 
-// Component Tường với Procedural Texture
-const WallShape = ({ points }) => {
+// Component Tường với Texture thật từ file
+const WallShape = ({ points, textureType }) => {
   const shape = useMemo(() => {
     const s = new THREE.Shape();
     if (points && points.length > 0) {
@@ -82,42 +102,19 @@ const WallShape = ({ points }) => {
     return s;
   }, [points]);
 
-  // Tạo texture gạch procedural (không cần load file)
-  const wallTexture = useMemo(() => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 512;
-    const ctx = canvas.getContext('2d');
-    
-    // Background màu xám nhạt
-    ctx.fillStyle = '#e8e8e8';
-    ctx.fillRect(0, 0, 512, 512);
-    
-    // Vẽ các viên gạch
-    const brickWidth = 128;
-    const brickHeight = 64;
-    
-    for (let y = 0; y < 512; y += brickHeight) {
-      for (let x = 0; x < 512; x += brickWidth) {
-        const offset = (y / brickHeight) % 2 === 0 ? 0 : brickWidth / 2;
-        
-        // Màu gạch ngẫu nhiên nhẹ
-        const brightness = 220 + Math.random() * 20;
-        ctx.fillStyle = `rgb(${brightness}, ${brightness}, ${brightness})`;
-        ctx.fillRect(x + offset, y, brickWidth - 2, brickHeight - 2);
-        
-        // Viền gạch
-        ctx.strokeStyle = '#cccccc';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(x + offset, y, brickWidth - 2, brickHeight - 2);
+  // Load textures từ public folder
+  const greyPlasterDiff = useLoader(THREE.TextureLoader, '/textures/grey_plaster_diff_4k.jpg');
+  const greyPlasterRough = useLoader(THREE.TextureLoader, '/textures/grey_plaster_rough_4k.jpg');
+
+  // Setup texture wrapping và repeat
+  useMemo(() => {
+    [greyPlasterDiff, greyPlasterRough].forEach(tex => {
+      if (tex) {
+        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(2, 2);
       }
-    }
-    
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(2, 2);
-    return texture;
-  }, []);
+    });
+  }, [greyPlasterDiff, greyPlasterRough]);
 
   const extrudeSettings = { depth: 2.5, bevelEnabled: false };
 
@@ -127,69 +124,37 @@ const WallShape = ({ points }) => {
     <mesh rotation={[-Math.PI / 2, 0, 0]} castShadow receiveShadow>
       <extrudeGeometry args={[shape, extrudeSettings]} />
       <meshStandardMaterial 
-        map={wallTexture}
+        map={greyPlasterDiff}
+        roughnessMap={greyPlasterRough}
         color="#ffffff" 
-        roughness={0.8}
-        metalness={0.1}
+        roughness={1}
+        metalness={0}
         side={THREE.DoubleSide} 
       />
     </mesh>
   );
 };
 
-// Component Sàn nhà với Procedural Texture
-const Floor = () => {
-  // Tạo texture sàn gỗ procedural
-  const floorTexture = useMemo(() => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1024;
-    canvas.height = 1024;
-    const ctx = canvas.getContext('2d');
-    
-    // Background màu gỗ
-    ctx.fillStyle = '#d4a574';
-    ctx.fillRect(0, 0, 1024, 1024);
-    
-    // Vẽ các tấm gỗ
-    const plankWidth = 1024;
-    const plankHeight = 128;
-    
-    for (let y = 0; y < 1024; y += plankHeight) {
-      // Màu gỗ biến đổi nhẹ
-      const hue = 30 + Math.random() * 10;
-      const sat = 40 + Math.random() * 20;
-      const light = 60 + Math.random() * 15;
-      ctx.fillStyle = `hsl(${hue}, ${sat}%, ${light}%)`;
-      ctx.fillRect(0, y, plankWidth, plankHeight - 4);
-      
-      // Vân gỗ
-      ctx.strokeStyle = `rgba(139, 90, 43, ${0.1 + Math.random() * 0.2})`;
-      ctx.lineWidth = 1;
-      for (let i = 0; i < 5; i++) {
-        ctx.beginPath();
-        ctx.moveTo(0, y + Math.random() * plankHeight);
-        ctx.lineTo(plankWidth, y + Math.random() * plankHeight);
-        ctx.stroke();
-      }
-      
-      // Khe giữa các tấm
-      ctx.fillStyle = '#8b5a2b';
-      ctx.fillRect(0, y + plankHeight - 4, plankWidth, 4);
+// Component Sàn nhà với Texture thật từ file
+const Floor = ({ textureType }) => {
+  // Load wood floor textures
+  const woodFloorDiff = useLoader(THREE.TextureLoader, '/textures/wood_floor_deck_diff_4k.jpg');
+
+  // Setup texture wrapping và repeat
+  useMemo(() => {
+    if (woodFloorDiff) {
+      woodFloorDiff.wrapS = woodFloorDiff.wrapT = THREE.RepeatWrapping;
+      woodFloorDiff.repeat.set(8, 8);
     }
-    
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(8, 8);
-    return texture;
-  }, []);
+  }, [woodFloorDiff]);
 
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
       <planeGeometry args={[100, 100]} />
       <meshStandardMaterial 
-        map={floorTexture}
+        map={woodFloorDiff}
         color="#ffffff" 
-        roughness={0.9}
+        roughness={0.8}
         metalness={0.1}
       />
     </mesh>
@@ -197,23 +162,25 @@ const Floor = () => {
 };
 
 // Scene Chính chứa Tường và Sàn
-const SceneContent = ({ wallsData }) => {
+const SceneContent = ({ wallsData, wallTexture, floorTexture }) => {
   return (
     <group>
       {wallsData.map((wallPoints, index) => (
-        <WallShape key={index} points={wallPoints} />
+        <WallShape key={index} points={wallPoints} textureType={wallTexture} />
       ))}
-      <Floor />
+      <Floor textureType={floorTexture} />
     </group>
   );
 };
 
-// --- PHẦN 3: APP COMPONENT CHÍNH ---
+// --- PHẦN 4: APP COMPONENT CHÍNH ---
 
 function App() {
   const [walls, setWalls] = useState([]);
   const [loading, setLoading] = useState(false);
   const [fileName, setFileName] = useState('');
+  const [wallTexture, setWallTexture] = useState('brick');
+  const [floorTexture, setFloorTexture] = useState('wood');
 
   // Inject Styles
   useEffect(() => {
@@ -287,6 +254,27 @@ function App() {
         </div>
       )}
 
+      {/* Material Info Panel */}
+      {walls.length > 0 && (
+        <div className="texture-panel">
+          <h3>🎨 Chất liệu</h3>
+          
+          <div className="texture-group">
+            <label>Tường: Vữa xám 4K</label>
+            <div style={{fontSize: '0.75rem', color: '#64748b', marginTop: '4px'}}>
+              • Diffuse + Roughness Map
+            </div>
+          </div>
+
+          <div className="texture-group">
+            <label>Sàn: Gỗ tự nhiên 4K</label>
+            <div style={{fontSize: '0.75rem', color: '#64748b', marginTop: '4px'}}>
+              • High Quality Texture
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Controls Info */}
       {walls.length > 0 && (
         <div className="controls-info">
@@ -332,7 +320,7 @@ function App() {
           infiniteGrid 
         />
         
-        <SceneContent wallsData={walls} />
+        <SceneContent wallsData={walls} wallTexture={wallTexture} floorTexture={floorTexture} />
         
         <OrbitControls 
           makeDefault 
