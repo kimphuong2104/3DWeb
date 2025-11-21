@@ -68,7 +68,7 @@ const styles = `
 
 // --- PHẦN 2: LOGIC 3D (Trước đây là Walls.jsx) ---
 
-// Component Tường
+// Component Tường với Procedural Texture
 const WallShape = ({ points }) => {
   const shape = useMemo(() => {
     const s = new THREE.Shape();
@@ -82,6 +82,43 @@ const WallShape = ({ points }) => {
     return s;
   }, [points]);
 
+  // Tạo texture gạch procedural (không cần load file)
+  const wallTexture = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    
+    // Background màu xám nhạt
+    ctx.fillStyle = '#e8e8e8';
+    ctx.fillRect(0, 0, 512, 512);
+    
+    // Vẽ các viên gạch
+    const brickWidth = 128;
+    const brickHeight = 64;
+    
+    for (let y = 0; y < 512; y += brickHeight) {
+      for (let x = 0; x < 512; x += brickWidth) {
+        const offset = (y / brickHeight) % 2 === 0 ? 0 : brickWidth / 2;
+        
+        // Màu gạch ngẫu nhiên nhẹ
+        const brightness = 220 + Math.random() * 20;
+        ctx.fillStyle = `rgb(${brightness}, ${brightness}, ${brightness})`;
+        ctx.fillRect(x + offset, y, brickWidth - 2, brickHeight - 2);
+        
+        // Viền gạch
+        ctx.strokeStyle = '#cccccc';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x + offset, y, brickWidth - 2, brickHeight - 2);
+      }
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(2, 2);
+    return texture;
+  }, []);
+
   const extrudeSettings = { depth: 2.5, bevelEnabled: false };
 
   if (!points || points.length === 0) return null;
@@ -90,8 +127,9 @@ const WallShape = ({ points }) => {
     <mesh rotation={[-Math.PI / 2, 0, 0]} castShadow receiveShadow>
       <extrudeGeometry args={[shape, extrudeSettings]} />
       <meshStandardMaterial 
-        color="#e5e7eb" 
-        roughness={0.7}
+        map={wallTexture}
+        color="#ffffff" 
+        roughness={0.8}
         metalness={0.1}
         side={THREE.DoubleSide} 
       />
@@ -99,15 +137,60 @@ const WallShape = ({ points }) => {
   );
 };
 
-// Component Sàn nhà
+// Component Sàn nhà với Procedural Texture
 const Floor = () => {
+  // Tạo texture sàn gỗ procedural
+  const floorTexture = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 1024;
+    const ctx = canvas.getContext('2d');
+    
+    // Background màu gỗ
+    ctx.fillStyle = '#d4a574';
+    ctx.fillRect(0, 0, 1024, 1024);
+    
+    // Vẽ các tấm gỗ
+    const plankWidth = 1024;
+    const plankHeight = 128;
+    
+    for (let y = 0; y < 1024; y += plankHeight) {
+      // Màu gỗ biến đổi nhẹ
+      const hue = 30 + Math.random() * 10;
+      const sat = 40 + Math.random() * 20;
+      const light = 60 + Math.random() * 15;
+      ctx.fillStyle = `hsl(${hue}, ${sat}%, ${light}%)`;
+      ctx.fillRect(0, y, plankWidth, plankHeight - 4);
+      
+      // Vân gỗ
+      ctx.strokeStyle = `rgba(139, 90, 43, ${0.1 + Math.random() * 0.2})`;
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 5; i++) {
+        ctx.beginPath();
+        ctx.moveTo(0, y + Math.random() * plankHeight);
+        ctx.lineTo(plankWidth, y + Math.random() * plankHeight);
+        ctx.stroke();
+      }
+      
+      // Khe giữa các tấm
+      ctx.fillStyle = '#8b5a2b';
+      ctx.fillRect(0, y + plankHeight - 4, plankWidth, 4);
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(8, 8);
+    return texture;
+  }, []);
+
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
       <planeGeometry args={[100, 100]} />
       <meshStandardMaterial 
-        color="#f8fafc" 
-        roughness={0.8}
-        metalness={0.2}
+        map={floorTexture}
+        color="#ffffff" 
+        roughness={0.9}
+        metalness={0.1}
       />
     </mesh>
   );
