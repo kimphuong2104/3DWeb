@@ -105,12 +105,12 @@ function App() {
         camera={{ position: [15, 15, 15], fov: 50 }}
         className="canvas"
       >
-        <color attach="background" args={['#0a0e1a']} />
-        <fog attach="fog" args={['#0a0e1a', 20, 50]} />
+        <color attach="background" args={['#f0f4f8']} />
+        <fog attach="fog" args={['#f0f4f8', 20, 50]} />
         
-        <ambientLight intensity={0.4} />
-        <directionalLight position={[10, 10, 5]} intensity={1} castShadow />
-        <pointLight position={[-10, -10, -5]} intensity={0.5} color="#4a90e2" />
+        <ambientLight intensity={0.8} />
+        <directionalLight position={[10, 10, 5]} intensity={1.5} castShadow />
+        <pointLight position={[-10, -10, -5]} intensity={0.8} color="#4a90e2" />
         <Environment preset="night" />
         
         {/* Grid helper */}
@@ -118,10 +118,10 @@ function App() {
           args={[50, 50]} 
           cellSize={1} 
           cellThickness={0.5} 
-          cellColor="#1a2332" 
+          cellColor="#cbd5e1" 
           sectionSize={5} 
           sectionThickness={1} 
-          sectionColor="#2a3f5f" 
+          sectionColor="#94a3b8" 
           fadeDistance={40} 
           fadeStrength={1}
           infiniteGrid

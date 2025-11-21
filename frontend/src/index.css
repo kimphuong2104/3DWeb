@@ -5,9 +5,9 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #0a0e1a;
+  color-scheme: light;
+  color: rgba(30, 41, 59, 0.87);
+  background-color: #f0f4f8;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -40,14 +40,14 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(26, 31, 53, 0.5);
+  background: rgba(203, 213, 225, 0.5);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(74, 144, 226, 0.5);
+  background: rgba(74, 144, 226, 0.6);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(74, 144, 226, 0.7);
+  background: rgba(74, 144, 226, 0.8);
 }
